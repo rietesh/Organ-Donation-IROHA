@@ -20,6 +20,11 @@ user_public_key = IrohaCrypto.derive_public_key(user_private_key)
 iroha = Iroha(ADMIN_ACCOUNT_ID)
 net = IrohaGrpc('{}:{}'.format(IROHA_HOST_ADDR, IROHA_PORT))
 
+def user_pub_priv_key():
+    user_private_key = IrohaCrypto.private_key()
+    user_public_key = IrohaCrypto.derive_public_key(user_private_key)
+    return user_private_key, user_public_key
+
 def send_transaction_and_print_status(transaction):
     hex_hash = binascii.hexlify(IrohaCrypto.hash(transaction))
     print('Transaction hash = {}, creator = {}'.format(
@@ -61,19 +66,35 @@ def add_coin_to_admin(assetss):
 
 def create_account_donor(name,ass):
     """
-    Create account 'userone@domain'
+    Create account
     """
     accid = name+'@'+'patient'
     assetid = ass+'#'+'organ'
+    priv,pub = user_pub_priv_key()
     tx = iroha.transaction([
         iroha.command('CreateAccount', account_name=name, domain_id='patient',
-                      public_key=user_public_key),
+                      public_key=pub),
         iroha.command('TransferAsset', src_account_id='admin@odwa', dest_account_id=accid,
                       asset_id=assetid, description='init top up', amount='1')
     ])
     IrohaCrypto.sign_transaction(tx, ADMIN_PRIVATE_KEY)
-    infoarray = send_transaction_and_print_status(tx)
-    return infoarray
+    res = send_transaction_and_print_status(tx)
+    return res
+
+def transfer_coin_from_src_to_dest(src,dest,ass):
+    """
+    Transfer 1 'organ' from 'donor' to 'patient'
+    """
+    srcaccid = src+'@'+'patient'
+    destaccid = dest+'@'+'patient'
+    assetid = ass+'#'+'organ'
+    tx = iroha.transaction([
+        iroha.command('TransferAsset', src_account_id='admin@odwa', dest_account_id=destaccid,
+                      asset_id=assetid, description='Transferred', amount='1')
+    ])
+    IrohaCrypto.sign_transaction(tx, ADMIN_PRIVATE_KEY)
+    result = send_transaction_and_print_status(tx)
+    return result
 
 ##########################################################################
 
